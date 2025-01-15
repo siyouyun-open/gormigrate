@@ -14,13 +14,13 @@ const (
 )
 
 // MigrateFunc is the func signature for migrating.
-type MigrateFunc func(*gorm.DB) error
+type MigrateFunc func(db *gorm.DB, pools []string) error
 
 // RollbackFunc is the func signature for rollbacking.
-type RollbackFunc func(*gorm.DB) error
+type RollbackFunc func(db *gorm.DB, pools []string) error
 
 // InitSchemaFunc is the func signature for initializing the schema.
-type InitSchemaFunc func(*gorm.DB) error
+type InitSchemaFunc func(db *gorm.DB, pools []string) error
 
 // Options define options for all migrations.
 type Options struct {
@@ -36,6 +36,8 @@ type Options struct {
 	// ValidateUnknownMigrations will cause migrate to fail if there's unknown migration
 	// IDs in the database
 	ValidateUnknownMigrations bool
+	// Pools is all the pool
+	Pools []string
 }
 
 // Migration represents a database migration (a modification to be made on the database).
@@ -328,7 +330,7 @@ func (g *Gormigrate) rollbackMigration(m *Migration) error {
 		return ErrRollbackImpossible
 	}
 
-	if err := m.Rollback(g.tx); err != nil {
+	if err := m.Rollback(g.tx, g.options.Pools); err != nil {
 		return err
 	}
 
@@ -337,7 +339,7 @@ func (g *Gormigrate) rollbackMigration(m *Migration) error {
 }
 
 func (g *Gormigrate) runInitSchema() error {
-	if err := g.initSchema(g.tx); err != nil {
+	if err := g.initSchema(g.tx, g.options.Pools); err != nil {
 		return err
 	}
 	if err := g.insertMigration(initSchemaMigrationID); err != nil {
@@ -363,7 +365,7 @@ func (g *Gormigrate) runMigration(migration *Migration) error {
 		return err
 	}
 	if !migrationRan {
-		if err := migration.Migrate(g.tx); err != nil {
+		if err := migration.Migrate(g.tx, g.options.Pools); err != nil {
 			return err
 		}
 
